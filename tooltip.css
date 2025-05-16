@@ -32,6 +32,29 @@
   text-align: center;
   padding: 10px;
   color: #666;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.hol-loading-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.hol-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(19, 41, 75, 0.1);
+  border-left-color: #13294b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .hol-result {
@@ -49,6 +72,11 @@
   align-items: center;
 }
 
+/* New class for section titles with copy buttons */
+.hol-section-title-with-copy {
+  justify-content: space-between;
+}
+
 .hol-section-title::before {
   content: '';
   display: inline-block;
@@ -57,6 +85,7 @@
   background-color: #13294b;
   border-radius: 50%;
   margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .hol-explanation {
@@ -218,7 +247,7 @@
   margin-top: 16px;
 }
 
-.hol-back-btn, .hol-close-btn {
+.hol-back-btn, .hol-close-btn, .hol-copy-btn {
   text-align: center;
   padding: 10px 16px;
   cursor: pointer;
@@ -238,6 +267,30 @@
   background-color: #d1e9f0;
 }
 
+.hol-copy-btn {
+  background-color: #e8f4f8;
+  color: #13294b;
+  border: 1px solid #d1e9f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hol-copy-btn:hover {
+  background-color: #d1e9f0;
+}
+
+.hol-copy-btn::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2313294b"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+  margin-right: 6px;
+}
+
 .hol-close-btn {
   background-color: #13294b;
   color: white;
@@ -245,4 +298,62 @@
 
 .hol-close-btn:hover {
   background-color: #0e1e38;
+}
+
+/* Copy feedback notification */
+.hol-copy-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10001;
+  animation: fadeInOut 2s ease;
+  pointer-events: none;
+}
+
+.hol-copy-feedback.success {
+  background-color: rgba(46, 125, 50, 0.9);
+}
+
+.hol-copy-feedback.error {
+  background-color: rgba(211, 47, 47, 0.9);
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Small copy button in header */
+.hol-copy-btn-small {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-color: #e8f4f8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+.hol-copy-btn-small:hover {
+  background-color: #d1e9f0;
+  transform: scale(1.1);
+}
+
+.hol-copy-btn-small svg {
+  width: 16px;
+  height: 16px;
 }

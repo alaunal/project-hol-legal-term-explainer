@@ -141,7 +141,10 @@ function showLoadingState() {
   if (tooltipElement) {
     tooltipElement.innerHTML = `
       <div class="hol-tooltip-content">
-        <div class="hol-loading">Loading...</div>
+        <div class="hol-loading">
+          <div class="hol-spinner"></div>
+          <div class="hol-loading-text">Loading...</div>
+        </div>
       </div>
     `;
   }
@@ -198,6 +201,14 @@ function showExplanation(explanation) {
     
     tooltipElement.innerHTML = `
       <div class="hol-tooltip-content hol-result">
+        <div class="hol-section-title hol-section-title-with-copy">
+          Penjelasan
+          <div class="hol-copy-btn-small" title="Copy explanation">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#13294b">
+              <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+          </div>
+        </div>
         <div class="hol-explanation">${formattedExplanation}</div>
         <div class="hol-button-container">
           <div class="hol-back-btn">Back</div>
@@ -205,6 +216,10 @@ function showExplanation(explanation) {
         </div>
       </div>
     `;
+    
+    document.querySelector('.hol-copy-btn-small').addEventListener('click', () => {
+      copyToClipboard(explanation);
+    });
     
     document.querySelector('.hol-back-btn').addEventListener('click', () => {
       // Go back to the main tooltip menu
@@ -231,6 +246,76 @@ function showExplanation(explanation) {
   }
 }
 
+// Show combined results in the tooltip with typing animation
+async function showCombinedResults(explanation, articles) {
+  if (tooltipElement) {
+    const formattedExplanation = processText(explanation);
+    
+    // Process articles
+    const processedArticles = Array.isArray(articles) ? articles : extractArticlesFromText(articles);
+    
+    let articlesHtml = '';
+    processedArticles.slice(0, 3).forEach((article, index) => { // Limit to top 3 articles
+      const title = article.title.replace(/<[^>]*>/g, '').trim();
+      const snippet = article.snippet ? processText(article.snippet) : '';
+      
+      // Create date from current date minus random days
+      const date = new Date();
+      date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+      const formattedDate = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      
+      // Categories based on the article index
+      const categories = ['Perdata', 'Klinik', 'Peraturan'];
+      const category = categories[index % categories.length];
+      
+      articlesHtml += `
+        <div class="hol-article">
+          <div class="hol-article-meta">
+            <span class="date">${formattedDate}</span>
+            <span class="category">${category}</span>
+          </div>
+          <a href="${article.url}" target="_blank">${title}</a>
+          <div class="hol-snippet">${snippet}</div>
+        </div>
+      `;
+    });
+    
+    // Set up the initial HTML structure
+    tooltipElement.innerHTML = `
+      <div class="hol-tooltip-content hol-result">
+        <div class="hol-section-title hol-section-title-with-copy">
+          Penjelasan
+          <div class="hol-copy-btn-small" title="Copy explanation">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#13294b">
+              <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="hol-explanation" id="explanation-container"></div>
+        <div class="hol-section-title">Artikel Terkait</div>
+        <div class="hol-articles-container">
+          ${articlesHtml || '<p>Tidak ada artikel terkait yang ditemukan.</p>'}
+        </div>
+        <div class="hol-button-container">
+          <div class="hol-close-btn">Tutup</div>
+        </div>
+      </div>
+    `;
+    
+    // Add event listener for close button
+    document.querySelector('.hol-close-btn').addEventListener('click', hideTooltip);
+    
+    // Add event listener for copy button
+    document.querySelector('.hol-copy-btn-small').addEventListener('click', () => {
+      copyToClipboard(explanation);
+    });
+    
+    // Start typing animation for explanation
+    const explanationContainer = document.getElementById('explanation-container');
+    await typeText(explanationContainer, formattedExplanation);
+  }
+}
+
 // Extract articles from text response if needed
 function extractArticlesFromText(text) {
   // If we already have structured articles, no need to extract
@@ -248,36 +333,63 @@ function extractArticlesFromText(text) {
   // Extract paragraphs or list items that might contain article titles
   const lines = processedText.split('</p><p>');
   
-  urls.forEach((url, index) => {
-    // Try to find a title near the URL
-    let title = `Article ${index + 1}`;
-    let snippet = '';
+  // Check if there are bullet points with article titles
+  const bulletItemRegex = /<li>(.*?)<\/li>/g;
+  let match;
+  let bulletItems = [];
+  
+  while ((match = bulletItemRegex.exec(processedText)) !== null) {
+    bulletItems.push(match[1].trim());
+  }
+  
+  // If we have bullet items, use them as article titles
+  if (bulletItems.length > 0 && urls.length > 0) {
+    // Match bullet items with URLs, using the minimum length of both arrays
+    const count = Math.min(bulletItems.length, urls.length);
     
-    // Look for potential title in nearby lines
-    for (const line of lines) {
-      if (line.includes(url)) {
-        // Extract text before the URL as potential title
-        const beforeUrl = line.split(url)[0];
-        if (beforeUrl && beforeUrl.trim().length > 0) {
-          title = beforeUrl.replace(/<[^>]*>/g, '').trim();
-        }
-        
-        // Extract text after the URL as potential snippet
-        const afterUrl = line.split(url)[1];
-        if (afterUrl && afterUrl.trim().length > 0) {
-          snippet = afterUrl.replace(/<[^>]*>/g, '').trim();
-        }
-        
-        break;
-      }
+    for (let i = 0; i < count; i++) {
+      const title = bulletItems[i].replace(/<[^>]*>/g, '').trim();
+      
+      articles.push({
+        url: urls[i],
+        title: title || 'Related Article',
+        snippet: 'Article from hukumonline.com'
+      });
     }
-    
-    articles.push({
-      url: url,
-      title: title || 'Related Article',
-      snippet: snippet || 'Article from hukumonline.com'
+  } 
+  // Otherwise fall back to previous extraction method
+  else {
+    urls.forEach((url, index) => {
+      // Try to find a title near the URL
+      let title = `Article ${index + 1}`;
+      let snippet = '';
+      
+      // Look for potential title in nearby lines
+      for (const line of lines) {
+        if (line.includes(url)) {
+          // Extract text before the URL as potential title
+          const beforeUrl = line.split(url)[0];
+          if (beforeUrl && beforeUrl.trim().length > 0) {
+            title = beforeUrl.replace(/<[^>]*>/g, '').trim();
+          }
+          
+          // Extract text after the URL as potential snippet
+          const afterUrl = line.split(url)[1];
+          if (afterUrl && afterUrl.trim().length > 0) {
+            snippet = afterUrl.replace(/<[^>]*>/g, '').trim();
+          }
+          
+          break;
+        }
+      }
+      
+      articles.push({
+        url: url,
+        title: title || 'Related Article',
+        snippet: snippet || 'Article from hukumonline.com'
+      });
     });
-  });
+  }
   
   return articles.length > 0 ? articles : [
     {
@@ -296,13 +408,26 @@ function showRelatedArticles(articles) {
     
     let articlesHtml = '';
     
-    processedArticles.forEach(article => {
+    processedArticles.forEach((article, index) => {
       // Clean up the title and snippet
       const title = article.title.replace(/<[^>]*>/g, '').trim();
       const snippet = article.snippet ? processText(article.snippet) : '';
       
+      // Create date from current date minus random days
+      const date = new Date();
+      date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+      const formattedDate = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      
+      // Categories based on the article index
+      const categories = ['Perdata', 'Klinik', 'Peraturan'];
+      const category = categories[index % categories.length];
+      
       articlesHtml += `
         <div class="hol-article">
+          <div class="hol-article-meta">
+            <span class="date">${formattedDate}</span>
+            <span class="category">${category}</span>
+          </div>
           <a href="${article.url}" target="_blank">${title}</a>
           <div class="hol-snippet">${snippet}</div>
         </div>
@@ -311,6 +436,7 @@ function showRelatedArticles(articles) {
     
     tooltipElement.innerHTML = `
       <div class="hol-tooltip-content hol-result">
+        <div class="hol-section-title">Artikel Terkait</div>
         <div class="hol-articles-container">
           ${articlesHtml || '<p>Tidak ada artikel terkait yang ditemukan.</p>'}
         </div>
@@ -411,7 +537,13 @@ class ApiService {
     // Construct the full instruction for the API
     const instruction = type === 'explanation' ?
       `INSTRUKSI: Kamu adalah asisten hukum. Berikut ini adalah istilah hukum: "${text}". Langsung berikan penjelasan yang jelas dan akurat dalam Bahasa Indonesia tentang istilah tersebut. JANGAN bertanya kembali kepada pengguna. JANGAN meminta klarifikasi. Berikan penjelasan terbaik yang kamu bisa berdasarkan informasi dari hukumonline.com. Mulai penjelasan langsung dengan definisi atau konsep, tanpa kalimat pembuka.` :
-      `INSTRUKSI: Kamu adalah asisten hukum. Berikut ini adalah topik hukum: "${text}". Langsung berikan minimal 3 artikel terkait dalam Bahasa Indonesia dari hukumonline.com. JANGAN bertanya kembali kepada pengguna. JANGAN meminta klarifikasi. Sertakan URL ke artikel-artikel tersebut. Mulai langsung dengan daftar artikel, tanpa kalimat pembuka.`;
+      `INSTRUKSI: Kamu adalah asisten hukum. Berikut ini adalah topik hukum: "${text}". Langsung berikan minimal 3 artikel terkait dalam Bahasa Indonesia dari hukumonline.com. JANGAN bertanya kembali kepada pengguna. JANGAN meminta klarifikasi. Format jawaban harus dalam bentuk bullet points dengan tanda • (bulatan) di awal setiap artikel, diikuti dengan judul artikel, lalu URL yang lengkap. Contoh:
+      
+• Judul Artikel Pertama https://www.hukumonline.com/artikel1
+• Judul Artikel Kedua https://www.hukumonline.com/artikel2
+• Judul Artikel Ketiga https://www.hukumonline.com/artikel3
+
+PENTING: Setiap artikel HARUS memiliki URL lengkap dari hukumonline.com dan jangan letakkan URL dalam tanda kurung. Mulai langsung dengan daftar artikel, tanpa kalimat pembuka.`;
     
     console.log('Full instruction:', instruction);
 
@@ -492,72 +624,44 @@ class ApiService {
   }
 
   parseArticlesFromContent(content) {
-    // This is a simplified example - you may need to adjust based on your API response format
     const articles = [];
     
-    // Split the content by newlines and look for article patterns
-    const lines = content.split('\n');
+    // Split the content by bullet points/list items
+    const bulletItems = content.split(/•|\*|-/).filter(item => item.trim().length > 0);
     
-    let currentArticle = null;
-    
-    for (const line of lines) {
-      // Check if the line contains a URL to hukumonline.com
-      const urlMatch = line.match(/(https?:\/\/[^\s]+hukumonline\.com[^\s]+)/);
+    for (const item of bulletItems) {
+      const trimmedItem = item.trim();
       
+      // Extract URL
+      const urlMatch = trimmedItem.match(/(https?:\/\/[^\s\)]+)/);
+      const url = urlMatch ? urlMatch[1] : 'https://www.hukumonline.com';
+      
+      // Extract title
+      let title = trimmedItem;
       if (urlMatch) {
-        // If we were building an article, push it to the array
-        if (currentArticle) {
-          articles.push(currentArticle);
-        }
-        
-        // Start a new article
-        currentArticle = {
-          url: urlMatch[1],
-          title: line.replace(urlMatch[1], '').trim(),
-          snippet: ''
-        };
-        
-        // If the title is empty, use a default or extract from the URL
-        if (!currentArticle.title) {
-          currentArticle.title = 'Related Article on Hukumonline.com';
-        }
-      } else if (currentArticle && line.trim()) {
-        // Add non-empty lines to the current article's snippet
-        currentArticle.snippet += line.trim() + ' ';
-      }
-    }
-    
-    // Add the last article if there is one
-    if (currentArticle) {
-      articles.push(currentArticle);
-    }
-    
-    // If no articles were found, create a fallback
-    if (articles.length === 0) {
-      // Extract any URLs from the content
-      const urlMatches = content.match(/(https?:\/\/[^\s]+)/g);
-      
-      if (urlMatches) {
-        // Filter for hukumonline.com URLs
-        const holUrls = urlMatches.filter(url => url.includes('hukumonline.com'));
-        
-        for (const url of holUrls) {
-          articles.push({
-            url: url,
-            title: 'Related Article on Hukumonline.com',
-            snippet: 'Visit this article for more information.'
-          });
-        }
+        // Remove the URL from the title
+        title = trimmedItem.replace(urlMatch[0], '').trim();
       }
       
-      // If still no articles, create a generic response
-      if (articles.length === 0) {
+      // Clean up the title (remove leading/trailing punctuation)
+      title = title.replace(/^[\s\[\]:;,.]+|[\s\[\]:;,.]+$/g, '');
+      
+      if (title && url) {
         articles.push({
-          url: 'https://www.hukumonline.com',
-          title: 'No specific articles found',
-          snippet: 'Visit Hukumonline.com for more legal information and resources.'
+          url,
+          title: title || 'Article on Hukumonline',
+          snippet: 'Article from hukumonline.com'
         });
       }
+    }
+    
+    // If no articles were extracted or the extraction failed, create a fallback
+    if (articles.length === 0) {
+      articles.push({
+        url: 'https://www.hukumonline.com',
+        title: 'Tidak ada artikel spesifik yang ditemukan',
+        snippet: 'Kunjungi hukumonline.com untuk informasi hukum lebih lanjut.'
+      });
     }
     
     return articles;
@@ -677,61 +781,79 @@ function typeText(element, text, speed = 2) {
   });
 }
 
-// Show combined results in the tooltip with typing animation
-async function showCombinedResults(explanation, articles) {
+// Function to copy text to clipboard
+function copyToClipboard(text) {
+  // Use modern Clipboard API if available
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        showCopyFeedback('Copied to clipboard!');
+        return true;
+      })
+      .catch(err => {
+        console.error('Failed to copy text using Clipboard API: ', err);
+        // Fall back to execCommand method
+        return fallbackCopyToClipboard(text);
+      });
+  } else {
+    // Use fallback for browsers that don't support Clipboard API
+    return fallbackCopyToClipboard(text);
+  }
+}
+
+// Fallback copy method using execCommand
+function fallbackCopyToClipboard(text) {
+  // Create a temporary textarea element
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  
+  // Make the textarea out of viewport
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-999999px';
+  textarea.style.top = '-999999px';
+  
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  
+  let success = false;
+  try {
+    // Execute the copy command
+    success = document.execCommand('copy');
+    if (success) {
+      showCopyFeedback('Copied to clipboard!');
+    } else {
+      showCopyFeedback('Failed to copy text', false);
+    }
+  } catch (err) {
+    console.error('Failed to copy text using execCommand: ', err);
+    showCopyFeedback('Failed to copy text', false);
+    success = false;
+  }
+  
+  // Remove the textarea
+  document.body.removeChild(textarea);
+  
+  return success;
+}
+
+// Show temporary feedback when something is copied
+function showCopyFeedback(message, isSuccess = true) {
+  // Create feedback element
+  const feedbackEl = document.createElement('div');
+  feedbackEl.className = `hol-copy-feedback ${isSuccess ? 'success' : 'error'}`;
+  feedbackEl.textContent = message;
+  
+  // Position the feedback centered in the tooltip
   if (tooltipElement) {
-    const formattedExplanation = processText(explanation);
+    tooltipElement.appendChild(feedbackEl);
     
-    // Process articles
-    const processedArticles = Array.isArray(articles) ? articles : extractArticlesFromText(articles);
-    
-    let articlesHtml = '';
-    processedArticles.slice(0, 3).forEach((article, index) => { // Limit to top 3 articles
-      const title = article.title.replace(/<[^>]*>/g, '').trim();
-      const snippet = article.snippet ? processText(article.snippet) : '';
-      
-      // Create date from current date minus random days
-      const date = new Date();
-      date.setDate(date.getDate() - Math.floor(Math.random() * 30));
-      const formattedDate = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      
-      // Categories based on the article index
-      const categories = ['Perdata', 'Klinik', 'Peraturan'];
-      const category = categories[index % categories.length];
-      
-      articlesHtml += `
-        <div class="hol-article">
-          <div class="hol-article-meta">
-            <span class="date">${formattedDate}</span>
-            <span class="category">${category}</span>
-          </div>
-          <a href="${article.url}" target="_blank">${title}</a>
-          <div class="hol-snippet">${snippet}</div>
-        </div>
-      `;
-    });
-    
-    // Set up the initial HTML structure
-    tooltipElement.innerHTML = `
-      <div class="hol-tooltip-content hol-result">
-        <div class="hol-section-title">Penjelasan</div>
-        <div class="hol-explanation" id="explanation-container"></div>
-        <div class="hol-section-title">Artikel Terkait</div>
-        <div class="hol-articles-container">
-          ${articlesHtml || '<p>Tidak ada artikel terkait yang ditemukan.</p>'}
-        </div>
-        <div class="hol-button-container">
-          <div class="hol-close-btn">Tutup</div>
-        </div>
-      </div>
-    `;
-    
-    // Add event listener for close button
-    document.querySelector('.hol-close-btn').addEventListener('click', hideTooltip);
-    
-    // Start typing animation for explanation
-    const explanationContainer = document.getElementById('explanation-container');
-    await typeText(explanationContainer, formattedExplanation);
+    // Remove after 2 seconds
+    setTimeout(() => {
+      if (feedbackEl.parentNode === tooltipElement) {
+        tooltipElement.removeChild(feedbackEl);
+      }
+    }, 2000);
   }
 }
 

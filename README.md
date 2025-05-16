@@ -34,6 +34,7 @@ A Chrome extension that explains legal terms and provides related articles from 
    - **Get Related Articles**: Find articles related to the selected text
 3. Click on your desired option
 4. View the explanation or related articles in the tooltip
+5. Use the "Copy" button to copy explanations to your clipboard
 
 ## Technical Details
 
