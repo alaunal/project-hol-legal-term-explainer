@@ -1,0 +1,178 @@
+.hol-tooltip {
+  position: absolute;
+  z-index: 10000;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  display: none;
+  max-width: 450px;
+  min-width: 300px;
+  overflow: hidden;
+}
+
+.hol-tooltip-content {
+  padding: 10px;
+}
+
+.hol-tooltip-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 4px;
+}
+
+.hol-tooltip-option:hover {
+  background-color: #f0f0f0;
+}
+
+.hol-loading {
+  text-align: center;
+  padding: 10px;
+  color: #666;
+}
+
+.hol-result {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.hol-section-title {
+  font-weight: bold;
+  font-size: 15px;
+  color: #0066cc;
+  margin-top: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 5px;
+}
+
+.hol-explanation {
+  line-height: 1.5;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.hol-explanation h1, .hol-explanation h2, .hol-explanation h3 {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  color: #0066cc;
+}
+
+.hol-explanation h1 {
+  font-size: 18px;
+}
+
+.hol-explanation h2 {
+  font-size: 16px;
+}
+
+.hol-explanation h3 {
+  font-size: 15px;
+}
+
+.hol-explanation p {
+  margin-bottom: 10px;
+}
+
+.hol-explanation strong {
+  font-weight: bold;
+}
+
+.hol-explanation em {
+  font-style: italic;
+}
+
+.hol-explanation ul, .hol-explanation ol {
+  margin-left: 20px;
+  margin-bottom: 10px;
+}
+
+.hol-explanation li {
+  margin-bottom: 5px;
+}
+
+.hol-articles-container {
+  margin-bottom: 10px;
+}
+
+.hol-article {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.hol-article:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.hol-article a {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.hol-article a:hover {
+  text-decoration: underline;
+}
+
+.hol-snippet {
+  margin: 5px 0 0 0;
+  color: #444;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.hol-snippet p {
+  margin: 0 0 5px 0;
+}
+
+.hol-snippet strong {
+  font-weight: bold;
+}
+
+.hol-snippet em {
+  font-style: italic;
+}
+
+.hol-error {
+  color: #d32f2f;
+  padding: 10px 0;
+}
+
+.hol-button-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.hol-back-btn, .hol-close-btn {
+  text-align: center;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.hol-back-btn {
+  background-color: #e8f4f8;
+  color: #0066cc;
+}
+
+.hol-back-btn:hover {
+  background-color: #d1e9f0;
+}
+
+.hol-close-btn {
+  background-color: #f5f5f5;
+}
+
+.hol-close-btn:hover {
+  background-color: #e0e0e0;
+}
