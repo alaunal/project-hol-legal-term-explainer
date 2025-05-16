@@ -2,18 +2,19 @@
   position: absolute;
   z-index: 10000;
   background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  font-family: Arial, sans-serif;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
   font-size: 14px;
   display: none;
-  max-width: 450px;
-  min-width: 300px;
+  max-width: 480px;
+  min-width: 320px;
   overflow: hidden;
+  border: 1px solid #e0e0e0;
 }
 
 .hol-tooltip-content {
-  padding: 10px;
+  padding: 16px;
 }
 
 .hol-tooltip-option {
@@ -40,19 +41,33 @@
 
 .hol-section-title {
   font-weight: bold;
-  font-size: 15px;
-  color: #0066cc;
+  font-size: 16px;
+  color: #13294b;
   margin-top: 12px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 5px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.hol-section-title::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background-color: #13294b;
+  border-radius: 50%;
+  margin-right: 8px;
 }
 
 .hol-explanation {
-  line-height: 1.5;
-  margin-bottom: 10px;
+  line-height: 1.6;
+  margin-bottom: 16px;
   font-size: 14px;
   color: #333;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 14px;
+  border-left: 4px solid #13294b;
 }
 
 .hol-explanation h1, .hol-explanation h2, .hol-explanation h3 {
@@ -95,31 +110,58 @@
 }
 
 .hol-articles-container {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
 .hol-article {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #eee;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  border-left: 4px solid #3498db;
+  transition: all 0.2s ease;
+}
+
+.hol-article:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .hol-article:last-child {
-  border-bottom: none;
   margin-bottom: 0;
-  padding-bottom: 0;
 }
 
 .hol-article a {
-  color: #0066cc;
+  color: #13294b;
   text-decoration: none;
   font-weight: bold;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  font-size: 15px;
 }
 
 .hol-article a:hover {
-  text-decoration: underline;
+  color: #3498db;
+}
+
+.hol-article-meta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.hol-article-meta .date {
+  margin-right: 12px;
+}
+
+.hol-article-meta .category {
+  background-color: #e8f4f8;
+  color: #3498db;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .hol-snippet {
@@ -146,23 +188,50 @@
   padding: 10px 0;
 }
 
+/* Typing animation */
+.typing-animation::after {
+  content: '|';
+  animation: blink 1s infinite;
+  font-weight: normal;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typed-text {
+  display: inline;
+  white-space: pre-wrap;
+}
+
+.hidden-text {
+  visibility: hidden;
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Button styling */
 .hol-button-container {
   display: flex;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 16px;
 }
 
 .hol-back-btn, .hol-close-btn {
   text-align: center;
-  padding: 8px;
+  padding: 10px 16px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 6px;
   flex: 1;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .hol-back-btn {
   background-color: #e8f4f8;
-  color: #0066cc;
+  color: #13294b;
+  border: 1px solid #d1e9f0;
 }
 
 .hol-back-btn:hover {
@@ -170,9 +239,10 @@
 }
 
 .hol-close-btn {
-  background-color: #f5f5f5;
+  background-color: #13294b;
+  color: white;
 }
 
 .hol-close-btn:hover {
-  background-color: #e0e0e0;
+  background-color: #0e1e38;
 }

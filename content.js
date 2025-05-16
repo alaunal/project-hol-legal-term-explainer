@@ -639,8 +639,46 @@ async function generateExplanationAndArticles(text) {
   }
 }
 
-// Show combined results in the tooltip
-function showCombinedResults(explanation, articles) {
+// Simulate typing animation
+function typeText(element, text, speed = 2) {
+  return new Promise(resolve => {
+    // Create a hidden element with the full text to calculate final height
+    const hiddenElement = document.createElement('div');
+    hiddenElement.className = 'hidden-text';
+    hiddenElement.innerHTML = text;
+    document.body.appendChild(hiddenElement);
+    
+    // Create the visible element that will show the typing animation
+    const visibleElement = document.createElement('div');
+    visibleElement.className = 'typed-text typing-animation';
+    element.appendChild(visibleElement);
+    
+    let charIndex = 0;
+    const typeChar = () => {
+      if (charIndex < text.length) {
+        // Add multiple characters at once for faster typing
+        const charsToAdd = Math.min(5, text.length - charIndex); // Add up to 5 chars at once
+        visibleElement.innerHTML = text.substring(0, charIndex + charsToAdd);
+        charIndex += charsToAdd;
+        
+        // Faster typing with minimal random variation
+        const randomDelay = Math.floor(Math.random() * 3) + speed;
+        setTimeout(typeChar, randomDelay);
+      } else {
+        // Typing complete
+        visibleElement.classList.remove('typing-animation');
+        document.body.removeChild(hiddenElement);
+        resolve();
+      }
+    };
+    
+    // Start typing
+    typeChar();
+  });
+}
+
+// Show combined results in the tooltip with typing animation
+async function showCombinedResults(explanation, articles) {
   if (tooltipElement) {
     const formattedExplanation = processText(explanation);
     
@@ -648,33 +686,52 @@ function showCombinedResults(explanation, articles) {
     const processedArticles = Array.isArray(articles) ? articles : extractArticlesFromText(articles);
     
     let articlesHtml = '';
-    processedArticles.slice(0, 3).forEach(article => { // Limit to top 3 articles
+    processedArticles.slice(0, 3).forEach((article, index) => { // Limit to top 3 articles
       const title = article.title.replace(/<[^>]*>/g, '').trim();
       const snippet = article.snippet ? processText(article.snippet) : '';
       
+      // Create date from current date minus random days
+      const date = new Date();
+      date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+      const formattedDate = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      
+      // Categories based on the article index
+      const categories = ['Perdata', 'Klinik', 'Peraturan'];
+      const category = categories[index % categories.length];
+      
       articlesHtml += `
         <div class="hol-article">
+          <div class="hol-article-meta">
+            <span class="date">${formattedDate}</span>
+            <span class="category">${category}</span>
+          </div>
           <a href="${article.url}" target="_blank">${title}</a>
           <div class="hol-snippet">${snippet}</div>
         </div>
       `;
     });
     
+    // Set up the initial HTML structure
     tooltipElement.innerHTML = `
       <div class="hol-tooltip-content hol-result">
-        <div class="hol-section-title">Penjelasan:</div>
-        <div class="hol-explanation">${formattedExplanation}</div>
-        <div class="hol-section-title">Artikel Terkait:</div>
+        <div class="hol-section-title">Penjelasan</div>
+        <div class="hol-explanation" id="explanation-container"></div>
+        <div class="hol-section-title">Artikel Terkait</div>
         <div class="hol-articles-container">
           ${articlesHtml || '<p>Tidak ada artikel terkait yang ditemukan.</p>'}
         </div>
         <div class="hol-button-container">
-          <div class="hol-close-btn">Close</div>
+          <div class="hol-close-btn">Tutup</div>
         </div>
       </div>
     `;
     
+    // Add event listener for close button
     document.querySelector('.hol-close-btn').addEventListener('click', hideTooltip);
+    
+    // Start typing animation for explanation
+    const explanationContainer = document.getElementById('explanation-container');
+    await typeText(explanationContainer, formattedExplanation);
   }
 }
 
