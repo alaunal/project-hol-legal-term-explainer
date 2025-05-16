@@ -357,3 +357,46 @@
   width: 16px;
   height: 16px;
 }
+
+/* Confirmation dialog styling */
+.hol-confirmation {
+  padding: 10px;
+  text-align: center;
+}
+
+.hol-confirmation-text {
+  margin-bottom: 16px;
+  font-size: 15px;
+  color: #333;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.hol-confirm-btn, .hol-cancel-btn {
+  text-align: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  flex: 1;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.hol-confirm-btn {
+  background-color: #13294b;
+  color: white;
+}
+
+.hol-confirm-btn:hover {
+  background-color: #0e1e38;
+}
+
+.hol-cancel-btn {
+  background-color: #f1f1f1;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.hol-cancel-btn:hover {
+  background-color: #e5e5e5;
+}

@@ -48,91 +48,225 @@ function hideTooltip() {
 // Handle the explain option
 async function handleExplain(text) {
   console.log('handleExplain called with text:', text);
-  showLoadingState();
   
-  try {
-    // Get API key from storage
-    chrome.storage.sync.get(['apiKey'], async function(result) {
-      console.log('API key retrieved from storage:', result.apiKey ? 'Key exists' : 'No key found');
+  if (tooltipElement) {
+    // Show confirmation dialog
+    tooltipElement.innerHTML = `
+      <div class="hol-tooltip-content">
+        <div class="hol-confirmation">
+          <div class="hol-confirmation-text">Dapatkan penjelasan untuk "${text.length > 30 ? text.substring(0, 30) + '...' : text}"?</div>
+          <div class="hol-button-container">
+            <div class="hol-confirm-btn" id="explain-confirm-btn">Ya, Jelaskan</div>
+            <div class="hol-cancel-btn" id="explain-cancel-btn">Batal</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add event listeners for confirmation buttons with specific IDs
+    document.getElementById('explain-confirm-btn').addEventListener('click', async (event) => {
+      event.preventDefault(); // Prevent any default actions
+      event.stopPropagation(); // Stop event propagation
+      console.log('Explanation confirmation clicked');
       
-      if (!result.apiKey) {
-        console.error('No API key found in storage');
-        showError('API key not set. Please set it in the extension options.');
-        return;
-      }
-      
-      // Initialize API service if needed
       try {
-        if (!apiService) {
-          console.log('Creating new ApiService instance');
-          apiService = new ApiService(result.apiKey);
-        } else {
-          console.log('Using existing ApiService instance');
-          apiService.setApiKey(result.apiKey);
-        }
-        
-        console.log('Calling getExplanation method for text:', text);
-        console.log('Text length:', text.length);
-        console.log('Text content:', text);
-        
-        const data = await apiService.getExplanation(text);
-        console.log('Explanation received from API:', data);
-        
-        if (data && data.explanation) {
-          console.log('Explanation content length:', data.explanation.length);
-          console.log('Explanation preview:', data.explanation.substring(0, 100) + '...');
-          showExplanation(data.explanation);
-        } else {
-          console.error('Invalid explanation data received:', data);
-          showError('Received invalid explanation data from API');
-        }
+        await fetchExplanation(text);
       } catch (error) {
-        console.error('Error in API service:', error);
-        showError(`API Error: ${error.message || 'Failed to get explanation'}`);
+        console.error('Error after confirmation:', error);
+        // Error handling is done in fetchExplanation
       }
     });
+    
+    document.getElementById('explain-cancel-btn').addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log('Explanation request cancelled by user');
+      
+      // Go back to main menu
+      if (tooltipElement) {
+        tooltipElement.innerHTML = `
+          <div class="hol-tooltip-content">
+            <div class="hol-tooltip-option" id="explain-option">Explain</div>
+            <div class="hol-tooltip-option" id="related-option">Get Related Articles</div>
+          </div>
+        `;
+        
+        // Re-add event listeners
+        document.getElementById('explain-option').addEventListener('click', () => {
+          handleExplain(selectedText);
+        });
+        
+        document.getElementById('related-option').addEventListener('click', () => {
+          handleRelatedArticles(selectedText);
+        });
+      }
+    });
+  }
+}
+
+// Fetch explanation after confirmation
+async function fetchExplanation(text) {
+  console.log('fetchExplanation started for:', text);
+  try {
+    showLoadingState();
+    
+    // Get API key from storage
+    return new Promise((resolve, reject) => {
+      chrome.storage.sync.get(['apiKey'], async function(result) {
+        console.log('API key retrieved from storage:', result.apiKey ? 'Key exists' : 'No key found');
+        
+        if (!result.apiKey) {
+          console.error('No API key found in storage');
+          showError('API key not set. Please set it in the extension options.');
+          reject('No API key found');
+          return;
+        }
+        
+        // Initialize API service if needed
+        try {
+          if (!apiService) {
+            console.log('Creating new ApiService instance');
+            apiService = new ApiService(result.apiKey);
+          } else {
+            console.log('Using existing ApiService instance');
+            apiService.setApiKey(result.apiKey);
+          }
+          
+          console.log('Calling getExplanation method for text:', text);
+          console.log('Text length:', text.length);
+          console.log('Text content:', text);
+          
+          const data = await apiService.getExplanation(text);
+          console.log('Explanation received from API:', data);
+          
+          if (data && data.explanation) {
+            console.log('Explanation content length:', data.explanation.length);
+            console.log('Explanation preview:', data.explanation.substring(0, 100) + '...');
+            showExplanation(data.explanation);
+            resolve();
+          } else {
+            console.error('Invalid explanation data received:', data);
+            showError('Received invalid explanation data from API');
+            reject('Invalid explanation data');
+          }
+        } catch (error) {
+          console.error('Error in API service:', error);
+          showError(`API Error: ${error.message || 'Failed to get explanation'}`);
+          reject(error);
+        }
+      });
+    });
   } catch (error) {
-    console.error('General error:', error);
+    console.error('General error in fetchExplanation:', error);
     showError(`Error: ${error.message}`);
+    return Promise.reject(error);
   }
 }
 
 // Handle the related articles option
 async function handleRelatedArticles(text) {
-  showLoadingState();
+  console.log('handleRelatedArticles called with text:', text);
   
-  try {
-    // Get API key from storage
-    chrome.storage.sync.get(['apiKey'], async function(result) {
-      console.log('API key retrieved from storage:', result.apiKey ? 'Key exists' : 'No key found');
+  if (tooltipElement) {
+    // Show confirmation dialog
+    tooltipElement.innerHTML = `
+      <div class="hol-tooltip-content">
+        <div class="hol-confirmation">
+          <div class="hol-confirmation-text">Cari artikel terkait "${text.length > 30 ? text.substring(0, 30) + '...' : text}"?</div>
+          <div class="hol-button-container">
+            <div class="hol-confirm-btn" id="articles-confirm-btn">Ya, Cari</div>
+            <div class="hol-cancel-btn" id="articles-cancel-btn">Batal</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add event listeners for confirmation buttons
+    document.getElementById('articles-confirm-btn').addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log('Articles confirmation clicked');
       
-      if (!result.apiKey) {
-        showError('API key not set. Please set it in the extension options.');
-        return;
-      }
-      
-      // Initialize API service if needed
       try {
-        if (!apiService) {
-          console.log('Creating new ApiService instance');
-          apiService = new ApiService(result.apiKey);
-        } else {
-          console.log('Using existing ApiService instance');
-          apiService.setApiKey(result.apiKey);
-        }
-        
-        console.log('Calling getRelatedArticles method');
-        const data = await apiService.getRelatedArticles(text);
-        console.log('Related articles received:', data);
-        showRelatedArticles(data.articles);
+        await fetchRelatedArticles(text);
       } catch (error) {
-        console.error('Error in API service:', error);
-        showError(`API Error: ${error.message || 'Failed to get related articles'}`);
+        console.error('Error after articles confirmation:', error);
+        // Error handling is done in fetchRelatedArticles
       }
     });
+    
+    document.getElementById('articles-cancel-btn').addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log('Articles request cancelled by user');
+      
+      // Go back to main menu
+      if (tooltipElement) {
+        tooltipElement.innerHTML = `
+          <div class="hol-tooltip-content">
+            <div class="hol-tooltip-option" id="explain-option">Explain</div>
+            <div class="hol-tooltip-option" id="related-option">Get Related Articles</div>
+          </div>
+        `;
+        
+        // Re-add event listeners
+        document.getElementById('explain-option').addEventListener('click', () => {
+          handleExplain(selectedText);
+        });
+        
+        document.getElementById('related-option').addEventListener('click', () => {
+          handleRelatedArticles(selectedText);
+        });
+      }
+    });
+  }
+}
+
+// Fetch related articles after confirmation
+async function fetchRelatedArticles(text) {
+  console.log('fetchRelatedArticles started for:', text);
+  try {
+    showLoadingState();
+    
+    // Get API key from storage
+    return new Promise((resolve, reject) => {
+      chrome.storage.sync.get(['apiKey'], async function(result) {
+        console.log('API key retrieved from storage:', result.apiKey ? 'Key exists' : 'No key found');
+        
+        if (!result.apiKey) {
+          console.error('No API key found in storage');
+          showError('API key not set. Please set it in the extension options.');
+          reject('No API key found');
+          return;
+        }
+        
+        // Initialize API service if needed
+        try {
+          if (!apiService) {
+            console.log('Creating new ApiService instance');
+            apiService = new ApiService(result.apiKey);
+          } else {
+            console.log('Using existing ApiService instance');
+            apiService.setApiKey(result.apiKey);
+          }
+          
+          console.log('Calling getRelatedArticles method');
+          const data = await apiService.getRelatedArticles(text);
+          console.log('Related articles received:', data);
+          
+          showRelatedArticles(data.articles);
+          resolve();
+        } catch (error) {
+          console.error('Error in API service:', error);
+          showError(`API Error: ${error.message || 'Failed to get related articles'}`);
+          reject(error);
+        }
+      });
+    });
   } catch (error) {
-    console.error('General error:', error);
+    console.error('General error in fetchRelatedArticles:', error);
     showError(`Error: ${error.message}`);
+    return Promise.reject(error);
   }
 }
 
@@ -696,50 +830,97 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Automatically generate explanation and related articles
 async function generateExplanationAndArticles(text) {
-  console.log('Automatically generating explanation and related articles for:', text);
-  showLoadingState();
+  console.log('Showing confirmation for:', text);
   
-  try {
-    // Get API key from storage
-    chrome.storage.sync.get(['apiKey'], async function(result) {
-      if (!result.apiKey) {
-        console.error('No API key found in storage');
-        showError('API key not set. Please set it in the extension options.');
-        return;
-      }
+  if (tooltipElement) {
+    // Show confirmation dialog first
+    tooltipElement.innerHTML = `
+      <div class="hol-tooltip-content">
+        <div class="hol-confirmation">
+          <div class="hol-confirmation-text">Dapatkan penjelasan untuk "${text.length > 30 ? text.substring(0, 30) + '...' : text}"?</div>
+          <div class="hol-button-container">
+            <div class="hol-confirm-btn" id="auto-confirm-btn">Ya, Jelaskan</div>
+            <div class="hol-cancel-btn" id="auto-cancel-btn">Batal</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add event listeners for confirmation buttons
+    document.getElementById('auto-confirm-btn').addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log('Auto confirmation clicked');
       
-      // Initialize API service if needed
       try {
-        if (!apiService) {
-          console.log('Creating new ApiService instance');
-          apiService = new ApiService(result.apiKey);
-        } else {
-          console.log('Using existing ApiService instance');
-          apiService.setApiKey(result.apiKey);
-        }
-        
-        // Start both requests in parallel
-        console.log('Starting parallel API requests');
-        const explanationPromise = apiService.getExplanation(text);
-        const articlesPromise = apiService.getRelatedArticles(text);
-        
-        // Wait for both to complete
-        const [explanationData, articlesData] = await Promise.all([explanationPromise, articlesPromise]);
-        
-        console.log('Both API requests completed');
-        console.log('Explanation:', explanationData);
-        console.log('Articles:', articlesData);
-        
-        // Show combined results
-        showCombinedResults(explanationData.explanation, articlesData.articles);
+        await processConfirmedRequest(text);
       } catch (error) {
-        console.error('Error in API service:', error);
-        showError(`API Error: ${error.message || 'Failed to get data'}`);
+        console.error('Error after auto confirmation:', error);
+        // Error handling is done in processConfirmedRequest
       }
     });
+    
+    document.getElementById('auto-cancel-btn').addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log('Request cancelled by user');
+      hideTooltip();
+    });
+  }
+}
+
+// Process the confirmed request
+async function processConfirmedRequest(text) {
+  console.log('Processing confirmed request for:', text);
+  try {
+    showLoadingState();
+    
+    // Get API key from storage
+    return new Promise((resolve, reject) => {
+      chrome.storage.sync.get(['apiKey'], async function(result) {
+        if (!result.apiKey) {
+          console.error('No API key found in storage');
+          showError('API key not set. Please set it in the extension options.');
+          reject('No API key found');
+          return;
+        }
+        
+        // Initialize API service if needed
+        try {
+          if (!apiService) {
+            console.log('Creating new ApiService instance');
+            apiService = new ApiService(result.apiKey);
+          } else {
+            console.log('Using existing ApiService instance');
+            apiService.setApiKey(result.apiKey);
+          }
+          
+          // Start both requests in parallel
+          console.log('Starting parallel API requests');
+          const explanationPromise = apiService.getExplanation(text);
+          const articlesPromise = apiService.getRelatedArticles(text);
+          
+          // Wait for both to complete
+          const [explanationData, articlesData] = await Promise.all([explanationPromise, articlesPromise]);
+          
+          console.log('Both API requests completed');
+          console.log('Explanation:', explanationData);
+          console.log('Articles:', articlesData);
+          
+          // Show combined results
+          showCombinedResults(explanationData.explanation, articlesData.articles);
+          resolve();
+        } catch (error) {
+          console.error('Error in API service:', error);
+          showError(`API Error: ${error.message || 'Failed to get data'}`);
+          reject(error);
+        }
+      });
+    });
   } catch (error) {
-    console.error('General error:', error);
+    console.error('General error in processConfirmedRequest:', error);
     showError(`Error: ${error.message}`);
+    return Promise.reject(error);
   }
 }
 
@@ -878,13 +1059,99 @@ document.addEventListener('mouseup', function(event) {
     
     positionTooltip(x, y);
     
-    // Automatically generate explanation and related articles
-    generateExplanationAndArticles(selectedText);
+    // Show confirmation for combined action directly
+    showDirectConfirmation(selectedText);
   } else {
     console.log('Empty or too short text selection, hiding tooltip');
     hideTooltip();
   }
 });
+
+// Show direct confirmation for combined action
+function showDirectConfirmation(text) {
+  if (!tooltipElement) return;
+  
+  // Show confirmation directly
+  tooltipElement.innerHTML = `
+    <div class="hol-tooltip-content">
+      <div class="hol-confirmation">
+        <div class="hol-confirmation-text">Dapatkan penjelasan untuk "${text.length > 30 ? text.substring(0, 30) + '...' : text}"?</div>
+        <div class="hol-button-container">
+          <div class="hol-confirm-btn" id="direct-combined-confirm">Ya, Jelaskan</div>
+          <div class="hol-cancel-btn" id="direct-combined-cancel">Batal</div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  tooltipElement.style.display = 'block'; // Ensure tooltip remains visible
+  
+  // Direct event handler for combined action
+  document.getElementById('direct-combined-confirm').onclick = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Direct combined confirm clicked');
+    
+    // Show loading immediately
+    showDirectLoadingState();
+    
+    // Get API key directly
+    chrome.storage.sync.get(['apiKey'], function(result) {
+      if (!result.apiKey) {
+        showError('API key not set. Please set it in the extension options.');
+        return;
+      }
+      
+      // Initialize API
+      if (!apiService) {
+        apiService = new ApiService(result.apiKey);
+      } else {
+        apiService.setApiKey(result.apiKey);
+      }
+      
+      // Call both APIs in parallel
+      console.log('Starting parallel API requests');
+      Promise.all([
+        apiService.getExplanation(text),
+        apiService.getRelatedArticles(text)
+      ])
+      .then(([explanationData, articlesData]) => {
+        console.log('Both API requests completed');
+        if (explanationData && explanationData.explanation && articlesData && articlesData.articles) {
+          showCombinedResults(explanationData.explanation, articlesData.articles);
+        } else {
+          showError('Received invalid data from API');
+        }
+      })
+      .catch(error => {
+        console.error('API error:', error);
+        showError(`API Error: ${error.message || 'Failed to get data'}`);
+      });
+    });
+  };
+  
+  document.getElementById('direct-combined-cancel').onclick = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    hideTooltip();
+  };
+}
+
+// Simplified loading state function
+function showDirectLoadingState() {
+  if (!tooltipElement) return;
+  
+  tooltipElement.innerHTML = `
+    <div class="hol-tooltip-content">
+      <div class="hol-loading">
+        <div class="hol-spinner"></div>
+        <div class="hol-loading-text">Loading...</div>
+      </div>
+    </div>
+  `;
+  
+  tooltipElement.style.display = 'block'; // Ensure tooltip remains visible
+}
 
 // Close tooltip when clicking outside
 document.addEventListener('mousedown', function(event) {
