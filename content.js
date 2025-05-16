@@ -3,6 +3,9 @@ let tooltipElement = null;
 let selectedText = '';
 let apiService = null;
 
+// Add global cache object
+let responseCache = {};
+
 // Create tooltip element
 function createTooltip() {
   const tooltip = document.createElement('div');
@@ -380,8 +383,70 @@ function showExplanation(explanation) {
   }
 }
 
-// Show combined results in the tooltip with typing animation
-async function showCombinedResults(explanation, articles) {
+// Load cache from localStorage on startup
+function loadCache() {
+  try {
+    const cachedData = localStorage.getItem('holResponseCache');
+    if (cachedData) {
+      responseCache = JSON.parse(cachedData);
+      
+      // Clean expired cache entries
+      const now = Date.now();
+      Object.keys(responseCache).forEach(key => {
+        if (responseCache[key].expiry < now) {
+          delete responseCache[key];
+        }
+      });
+      
+      console.log('Cache loaded with', Object.keys(responseCache).length, 'valid entries');
+      localStorage.setItem('holResponseCache', JSON.stringify(responseCache));
+    }
+  } catch (error) {
+    console.error('Error loading cache:', error);
+    responseCache = {};
+  }
+}
+
+// Save cache to localStorage
+function saveCache() {
+  try {
+    localStorage.setItem('holResponseCache', JSON.stringify(responseCache));
+  } catch (error) {
+    console.error('Error saving cache:', error);
+  }
+}
+
+// Check cache for a response
+function checkCache(text) {
+  const cacheKey = text.toLowerCase().trim();
+  const cachedResponse = responseCache[cacheKey];
+  
+  if (cachedResponse && cachedResponse.expiry > Date.now()) {
+    console.log('Cache hit for:', text);
+    return cachedResponse.data;
+  }
+  
+  console.log('Cache miss for:', text);
+  return null;
+}
+
+// Store response in cache
+function storeInCache(text, data) {
+  const cacheKey = text.toLowerCase().trim();
+  // Cache expires in 24 hours
+  const expiry = Date.now() + (24 * 60 * 60 * 1000);
+  
+  responseCache[cacheKey] = {
+    data: data,
+    expiry: expiry
+  };
+  
+  saveCache();
+  console.log('Stored in cache:', text);
+}
+
+// Show combined results in the tooltip with typing animation and regenerate button
+async function showCombinedResults(explanation, articles, originalText) {
   if (tooltipElement) {
     const formattedExplanation = processText(explanation);
     
@@ -431,6 +496,7 @@ async function showCombinedResults(explanation, articles) {
           ${articlesHtml || '<p>Tidak ada artikel terkait yang ditemukan.</p>'}
         </div>
         <div class="hol-button-container">
+          <div class="hol-regenerate-btn" id="regenerate-btn">Regenerate</div>
           <div class="hol-close-btn">Tutup</div>
         </div>
       </div>
@@ -438,6 +504,14 @@ async function showCombinedResults(explanation, articles) {
     
     // Add event listener for close button
     document.querySelector('.hol-close-btn').addEventListener('click', hideTooltip);
+    
+    // Add event listener for regenerate button
+    document.getElementById('regenerate-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Regenerate button clicked for:', originalText);
+      fetchCombinedData(originalText, true); // Bypass cache
+    });
     
     // Add event listener for copy button
     document.querySelector('.hol-copy-btn-small').addEventListener('click', () => {
@@ -804,6 +878,7 @@ PENTING: Setiap artikel HARUS memiliki URL lengkap dari hukumonline.com dan jang
 
 // Initialize when the content script loads
 console.log('Legal Term Explainer: Content script loaded');
+loadCache(); // Load cache on startup
 
 // Listen for messages from the popup or background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -908,7 +983,7 @@ async function processConfirmedRequest(text) {
           console.log('Articles:', articlesData);
           
           // Show combined results
-          showCombinedResults(explanationData.explanation, articlesData.articles);
+          showCombinedResults(explanationData.explanation, articlesData.articles, text);
           resolve();
         } catch (error) {
           console.error('Error in API service:', error);
@@ -1059,8 +1134,21 @@ document.addEventListener('mouseup', function(event) {
     
     positionTooltip(x, y);
     
-    // Show confirmation for combined action directly
-    showDirectConfirmation(selectedText);
+    // Check cache first
+    const cachedData = checkCache(selectedText);
+    if (cachedData) {
+      console.log('Cache hit, loading directly without confirmation');
+      // If data is already in cache, show it directly without confirmation
+      showCombinedResults(
+        cachedData.explanation, 
+        cachedData.articles, 
+        selectedText
+      );
+    } else {
+      // If not in cache, show confirmation dialog
+      console.log('Cache miss, showing confirmation dialog');
+      showDirectConfirmation(selectedText);
+    }
   } else {
     console.log('Empty or too short text selection, hiding tooltip');
     hideTooltip();
@@ -1086,48 +1174,13 @@ function showDirectConfirmation(text) {
   
   tooltipElement.style.display = 'block'; // Ensure tooltip remains visible
   
-  // Direct event handler for combined action
+  // Set up event handlers
   document.getElementById('direct-combined-confirm').onclick = function(e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('Direct combined confirm clicked');
     
-    // Show loading immediately
-    showDirectLoadingState();
-    
-    // Get API key directly
-    chrome.storage.sync.get(['apiKey'], function(result) {
-      if (!result.apiKey) {
-        showError('API key not set. Please set it in the extension options.');
-        return;
-      }
-      
-      // Initialize API
-      if (!apiService) {
-        apiService = new ApiService(result.apiKey);
-      } else {
-        apiService.setApiKey(result.apiKey);
-      }
-      
-      // Call both APIs in parallel
-      console.log('Starting parallel API requests');
-      Promise.all([
-        apiService.getExplanation(text),
-        apiService.getRelatedArticles(text)
-      ])
-      .then(([explanationData, articlesData]) => {
-        console.log('Both API requests completed');
-        if (explanationData && explanationData.explanation && articlesData && articlesData.articles) {
-          showCombinedResults(explanationData.explanation, articlesData.articles);
-        } else {
-          showError('Received invalid data from API');
-        }
-      })
-      .catch(error => {
-        console.error('API error:', error);
-        showError(`API Error: ${error.message || 'Failed to get data'}`);
-      });
-    });
+    fetchCombinedData(text, false);
   };
   
   document.getElementById('direct-combined-cancel').onclick = function(e) {
@@ -1159,3 +1212,70 @@ document.addEventListener('mousedown', function(event) {
     hideTooltip();
   }
 });
+
+// Fetch combined data (with cache option)
+async function fetchCombinedData(text, bypassCache = false) {
+  // Check cache first (if not bypassing)
+  if (!bypassCache) {
+    const cachedData = checkCache(text);
+    if (cachedData) {
+      showCombinedResults(
+        cachedData.explanation, 
+        cachedData.articles, 
+        text
+      );
+      return;
+    }
+  }
+  
+  // Show loading state if no cache hit
+  showDirectLoadingState();
+  
+  // Get API key directly
+  chrome.storage.sync.get(['apiKey'], function(result) {
+    if (!result.apiKey) {
+      showError('API key not set. Please set it in the extension options.');
+      return;
+    }
+    
+    // Initialize API
+    if (!apiService) {
+      apiService = new ApiService(result.apiKey);
+    } else {
+      apiService.setApiKey(result.apiKey);
+    }
+    
+    // Call both APIs in parallel
+    console.log('Starting parallel API requests');
+    Promise.all([
+      apiService.getExplanation(text),
+      apiService.getRelatedArticles(text)
+    ])
+    .then(([explanationData, articlesData]) => {
+      console.log('Both API requests completed');
+      if (explanationData && explanationData.explanation && articlesData && articlesData.articles) {
+        // Store in cache
+        const combinedData = {
+          explanation: explanationData.explanation,
+          articles: articlesData.articles
+        };
+        
+        if (!bypassCache) {
+          storeInCache(text, combinedData);
+        }
+        
+        showCombinedResults(
+          explanationData.explanation, 
+          articlesData.articles,
+          text
+        );
+      } else {
+        showError('Received invalid data from API');
+      }
+    })
+    .catch(error => {
+      console.error('API error:', error);
+      showError(`API Error: ${error.message || 'Failed to get data'}`);
+    });
+  });
+}
